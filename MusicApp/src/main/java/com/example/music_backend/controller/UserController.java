@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "*") // allows mobile phone to connect flawlessly with backend
@@ -18,7 +20,7 @@ public class UserController {
 
     // Path: POST http://localhost:8080/api/users/register
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequestDto request) {
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDto request) {
         try {
             UserDto registeredUser = userService.registerUser(request);
             return ResponseEntity.ok(registeredUser);
@@ -30,7 +32,7 @@ public class UserController {
 
     // Path: POST http://localhost:8080/api/users/login
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequestDto request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto request) {
         var userOpt = userService.login(request);
 
         if (userOpt.isPresent()) {

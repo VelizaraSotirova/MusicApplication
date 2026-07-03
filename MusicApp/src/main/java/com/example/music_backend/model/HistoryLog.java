@@ -36,5 +36,7 @@ public class HistoryLog {
     private String artist;
 
     @Column(nullable = false)
+    @jakarta.validation.constraints.Min(1)
+    @jakarta.validation.constraints.Max(5)
     private int rating;
 }

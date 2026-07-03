@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
+import jakarta.validation.Valid;
+
 
 /*
  * TODO: FUTURE ENHANCEMENTS FOR MUSIC MANAGEMENT (KOTLIN FRONTEND COMPATIBILITY):
@@ -39,7 +41,8 @@ public class CatalogController {
 
     // Path: POST http://localhost:8080/api/catalog/add
     @PostMapping("/add")
-    public ResponseEntity<?> addSong(@RequestHeader("X-Username") String username, @RequestBody AddSongRequestDto request) {
+    public ResponseEntity<?> addSong(@Valid @RequestHeader("X-Username") String username,
+                                     @Valid @RequestBody AddSongRequestDto request) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return ResponseEntity.status(401).body("User not found!");
 
@@ -50,7 +53,8 @@ public class CatalogController {
 
     // Path: POST http://localhost:8080/api/catalog/undo
     @PostMapping("/undo")
-    public ResponseEntity<?> undoAction(@RequestHeader("X-Username") String username, @RequestBody UndoRequestDto request) {
+    public ResponseEntity<?> undoAction(@ Valid@RequestHeader("X-Username") String username,
+                                        @Valid @RequestBody UndoRequestDto request) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return ResponseEntity.status(401).body("User not found!");
 
