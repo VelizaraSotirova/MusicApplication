@@ -17,3 +17,15 @@ Thumbs.db
 local.properties
 
 catalog_journal.json
+
+*.apk
+*.aar
+*.jar
+/build
+
+.idea/
+*.iml
+.gradle/
+local.properties
+
+*.log
