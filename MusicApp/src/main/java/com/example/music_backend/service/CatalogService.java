@@ -8,11 +8,12 @@ import com.example.music_backend.model.SharedCatalog;
 import com.example.music_backend.model.User;
 import com.example.music_backend.repository.HistoryLogRepository;
 import com.example.music_backend.repository.SharedCatalogRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class CatalogService {
         HistoryLog log = new HistoryLog();
         log.setUser(user);
         log.setCommandType("ADD");
+        log.setPlaylistId(request.playlistId());
         log.setSongId(songId);
         log.setTitle(request.title());
         log.setArtist(request.artist());
@@ -59,8 +61,8 @@ public class CatalogService {
         return new SongDto(songId, request.title(), request.artist(), request.rating());
     }
 
-
-    public void undoLastAction(User user, String playlistId) {
+    @Transactional
+    public void undoLastAction(User user) {
         List<HistoryLog> userHistory = historyRepository.findByUser(user);
 
         HistoryLog lastExecuted = userHistory.stream()
@@ -73,11 +75,7 @@ public class CatalogService {
             historyRepository.save(lastExecuted);
 
             if (lastExecuted.getCommandType().equals("ADD")) {
-                List<SharedCatalog> sharedSongs = sharedRepository.findByPlaylistId(playlistId);
-                sharedSongs.stream()
-                        .filter(s -> s.getTitle().equalsIgnoreCase(lastExecuted.getTitle())
-                                && s.getArtist().equalsIgnoreCase(lastExecuted.getArtist()))
-                        .forEach(sharedRepository::delete);
+                sharedRepository.deleteBySongIdAndAddedByUsername(lastExecuted.getSongId(), user.getUsername());
             }
 
             triggerJsonSync(user);
@@ -85,11 +83,11 @@ public class CatalogService {
     }
 
 
-    public MergeResponseDto mergeFromFriendFile(User user, String playlistId, File friendFile) {
+    public MergeResponseDto mergeFromFriendStream(User user, String playlistId, InputStream inputStream) {
         int addedCount = 0;
         int skippedCount = 0;
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(friendFile))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.contains("{\"type\"") && line.contains("\"ADD\"")) {

@@ -1,50 +1,37 @@
 package com.example.musicappmobile.data.network
 
-import com.example.musicappmobile.data.model.AddSongRequest
-import com.example.musicappmobile.data.model.LoginRequest
-import com.example.musicappmobile.data.model.MergeResponse
-import com.example.musicappmobile.data.model.RegisterRequest
-import com.example.musicappmobile.data.model.SongResponse
-import com.example.musicappmobile.data.model.UndoRequest
-import com.example.musicappmobile.data.model.UserResponse
+import com.example.musicappmobile.data.model.*
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
-import retrofit2.http.Body
-import retrofit2.http.Header
-import retrofit2.http.Multipart
-import retrofit2.http.POST
-import retrofit2.http.Part
+import retrofit2.http.*
 
 interface MusicApiService {
 
     @POST("api/users/register")
-    suspend fun registerUser(
-        @Body request: RegisterRequest
-    ): Response<UserResponse>
+    suspend fun registerUser(@Body request: RegisterRequest): Response<UserResponse>
 
     @POST("api/users/login")
-    suspend fun loginUser(
-        @Body request: LoginRequest
-    ): Response<UserResponse>
+    suspend fun loginUser(@Body request: LoginRequest): Response<AuthResponse>
 
     @POST("api/catalog/add")
     suspend fun addSong(
-        @Header("X-Username") username: String,
+        @Header("Authorization") token: String,
         @Body request: AddSongRequest
     ): Response<SongResponse>
 
+
     @POST("api/catalog/undo")
     suspend fun undoAction(
-        @Header("X-Username") username: String,
-        @Body request: UndoRequest
-    ): Response<String> // returns text message from backend
+        @Header("Authorization") token: String
+    ): Response<ResponseBody>
 
     @Multipart
     @POST("api/catalog/merge")
     suspend fun mergeCatalog(
-        @Header("X-Username") username: String,
-        @Part("playlistId") playlistId: RequestBody, // Send as text component
-        @Part file: MultipartBody.Part               // Send as real file (bytes)
+        @Header("Authorization") token: String,
+        @Part("playlistId") playlistId: RequestBody,
+        @Part file: MultipartBody.Part
     ): Response<MergeResponse>
 }

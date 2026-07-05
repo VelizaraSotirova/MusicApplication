@@ -39,4 +39,7 @@ public class HistoryLog {
     @jakarta.validation.constraints.Min(1)
     @jakarta.validation.constraints.Max(5)
     private int rating;
+
+    @Column(name = "playlist_id")
+    private String playlistId;
 }
