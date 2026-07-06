@@ -12,13 +12,4 @@ public interface SharedCatalogRepository extends JpaRepository<SharedCatalog, St
     boolean existsByPlaylistIdAndTitleAndArtist(String playlistId, String title, String artist);
     List<SharedCatalog> findByAddedByUsername(String username);
     Optional<SharedCatalog> findBySongIdAndAddedByUsername(String songId, String username);
-    boolean existsBySongId(String songId);
-
-    @Modifying
-    @Transactional
-    void deleteBySongIdAndAddedByUsername(String songId, String addedByUsername);
-
-    @Modifying
-    @Transactional
-    void deleteBySongId(String songId);
 }

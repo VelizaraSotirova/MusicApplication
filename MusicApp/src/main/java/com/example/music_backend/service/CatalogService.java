@@ -129,25 +129,6 @@ public class CatalogService {
         triggerJsonSync(user);
     }
 
-    @Transactional
-    public void mergeFriendCatalog(User currentUser, String friendUsername) {
-        List<SharedCatalog> friendSongs = journalService.readCatalogFromFile(friendUsername);
-
-        for (SharedCatalog song : friendSongs) {
-            if (!sharedRepository.existsBySongId(song.getSongId())) {
-
-                AddSongRequestDto dto = new AddSongRequestDto(
-                        song.getPlaylistId(),
-                        song.getTitle(),
-                        song.getArtist(),
-                        song.getRating()
-                );
-
-                addSong(currentUser, dto);
-            }
-        }
-    }
-
 
     public MergeResponseDto mergeFromFriendStream(User user, String playlistId, InputStream inputStream) {
         int addedCount = 0;

@@ -121,7 +121,7 @@ fun AuthScreen(
             enabled = !isLoading
         ) {
             Text(
-                text = if (isLoginMode) "Haven't got profile yet? Register here"
+                text = if (isLoginMode) "Don't have profile yet? Register here"
                 else "Already have an account? Log in here"
             )
         }

@@ -45,9 +45,9 @@ public class JsonJournalService {
             writer.println("  ]");
             writer.println("}");
 
-            System.out.println("Файлът е записан успешно: " + file.getAbsolutePath());
+            System.out.println("File saved successfully: " + file.getAbsolutePath());
         } catch (IOException e) {
-            System.err.println("Грешка при запис на JSON: " + e.getMessage());
+            System.err.println("Error JSON: " + e.getMessage());
         }
     }
 
@@ -79,7 +79,7 @@ public class JsonJournalService {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Грешка при четене: " + e.getMessage());
+            System.err.println("Error reading: " + e.getMessage());
         }
         return catalog;
     }
