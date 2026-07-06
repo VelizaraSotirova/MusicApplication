@@ -1,12 +1,19 @@
 MusicApp: Collaborative Catalog Manager
+
 MusicApp is a full-stack music catalog management system. It allows users to manage their songs, filter/search libraries, and collaborate with friends by merging external song catalogs. The project has evolved from basic command-line requirements into a robust client-server architecture using an Android mobile interface and a Spring Boot backend.
 
 Features
+
 Catalog Management: Add, delete, and list songs with rating support (1-5 stars).
+
 Search & Filter: Search by title or artist (case-insensitive) and sort the catalog dynamically.
+
 Merge Functionality: Import and merge external catalogs from JSON files, automatically handling duplicates.
+
 Undo History: Undo recent actions to revert catalog changes.
+
 Full-Stack Architecture: Secured user authentication and persistent storage via a relational database.
+
 
 Tech Stack
 Backend: Java, Spring Boot, JPA/Hibernate.
