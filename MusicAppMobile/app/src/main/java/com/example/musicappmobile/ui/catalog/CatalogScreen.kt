@@ -1,6 +1,9 @@
 package com.example.musicappmobile.ui.catalog
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +21,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.musicappmobile.data.model.SongResponse
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,33 +46,36 @@ fun CatalogScreen(viewModel: MusicViewModel, onLogout: () -> Unit) {
     val sortOptions = listOf("Title", "Artist", "Rating")
     var selectedSortOption by remember { mutableStateOf(sortOptions[0]) }
 
+    // File Picker Launcher
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val inputStream = context.contentResolver.openInputStream(it)
+            val file = File(context.cacheDir, "friend_catalog.json")
+            inputStream?.use { input ->
+                FileOutputStream(file).use { output -> input.copyTo(output) }
+            }
+            viewModel.mergeCatalog(selectedPlaylist, file)
+        }
+    }
+
     LaunchedEffect(uiMessage) {
         uiMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-
             if (it.contains("successfully", ignoreCase = true)) {
-                if (it.contains("undo", ignoreCase = true)) {
-                    canUndo = false
-                } else {
-                    canUndo = true
-                }
+                canUndo = !it.contains("undo", ignoreCase = true)
             }
             viewModel.clearMessage()
         }
     }
 
     val allSongsCombined = remember(databaseSongs, localSongs, selectedSortOption, searchQuery) {
-        val databaseAsSongs = databaseSongs.map {
-            SongResponse(it.songId, it.title, it.artist, it.rating)
-        }
-
+        val databaseAsSongs = databaseSongs.map { SongResponse(it.songId, it.title, it.artist, it.rating) }
         val combined = databaseAsSongs + localSongs
 
         val filtered = if (searchQuery.isBlank()) combined else {
-            combined.filter {
-                it.title.contains(searchQuery, ignoreCase = true) ||
-                        it.artist.contains(searchQuery, ignoreCase = true)
-            }
+            combined.filter { it.title.contains(searchQuery, ignoreCase = true) || it.artist.contains(searchQuery, ignoreCase = true) }
         }
 
         when (selectedSortOption) {
@@ -78,19 +86,17 @@ fun CatalogScreen(viewModel: MusicViewModel, onLogout: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .statusBarsPadding()
-        .padding(16.dp))
-    {
+    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Music catalog", fontSize = 24.sp, style = MaterialTheme.typography.headlineMedium)
-            Button(onClick = { canUndo = false; onLogout() }) { Text("Logout") }
+            Row {
+                Button(onClick = { launcher.launch("application/json") }, modifier = Modifier.padding(end = 8.dp)) { Text("Merge") }
+                Button(onClick = { canUndo = false; onLogout() }) { Text("Logout") }
+            }
         }
 
         OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
+            value = searchQuery, onValueChange = { searchQuery = it },
             label = { Text("Search by title or artist...") },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
         )
@@ -138,25 +144,9 @@ fun CatalogScreen(viewModel: MusicViewModel, onLogout: () -> Unit) {
             ) { Text("UNDO LAST ACTIVITY") }
         }
 
-
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Sort by: ", style = MaterialTheme.typography.bodyMedium)
-            sortOptions.forEach { option ->
-                FilterChip(
-                    selected = (selectedSortOption == option),
-                    onClick = { selectedSortOption = option },
-                    label = { Text(option) },
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
-
-        LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(
-                items = allSongsCombined,
-                key = { it.songId }
-            ) { song ->
-                Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            items(items = allSongsCombined, key = { it.songId }) { song ->
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(text = song.title, style = MaterialTheme.typography.bodyLarge)

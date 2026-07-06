@@ -9,6 +9,11 @@ import com.example.musicappmobile.data.model.SharedCatalogResponse
 import com.example.musicappmobile.data.model.SongResponse
 import com.example.musicappmobile.data.repository.MusicRepository
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
 
@@ -47,7 +52,8 @@ class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
         _isLoading.value = true
         viewModelScope.launch {
             try {
-                val response = repository.addSong(token, AddSongRequest(playlistId, title, artist, rating))
+                val response =
+                    repository.addSong(token, AddSongRequest(playlistId, title, artist, rating))
                 if (response.isSuccessful) {
                     _uiMessage.value = "Song '$title' added successfully!"
                     loadUserSongs()
@@ -122,6 +128,27 @@ class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
                 _uiMessage.value = "Communication exception: ${e.message}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun mergeCatalog(playlistId: String, file: File) {
+        val fileBody = file.asRequestBody("application/json".toMediaTypeOrNull())
+        val filePart = MultipartBody.Part.createFormData("file", file.name, fileBody)
+
+        viewModelScope.launch {
+            try {
+                val response = repository.mergeCatalog(playlistId, filePart)
+
+                if (response.isSuccessful) {
+                    val data = response.body()
+                    _uiMessage.value = "Successfully added: ${data?.songsAdded}, ${data?.duplicatesSkipped} skipped."
+                    loadUserSongs()
+                } else {
+                    _uiMessage.value = "Server error: ${response.code()}"
+                }
+            } catch (e: Exception) {
+                _uiMessage.value = "Connection error: ${e.message}"
             }
         }
     }

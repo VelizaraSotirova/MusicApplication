@@ -39,10 +39,10 @@ interface MusicApiService {
 
 
     @Multipart
-    @POST("api/catalog/merge")
+    @POST("api/catalog/merge/{playlistId}")
     suspend fun mergeCatalog(
         @Header("Authorization") token: String,
-        @Part("playlistId") playlistId: RequestBody,
+        @Path("playlistId") playlistId: String,
         @Part file: MultipartBody.Part
     ): Response<MergeResponse>
 }

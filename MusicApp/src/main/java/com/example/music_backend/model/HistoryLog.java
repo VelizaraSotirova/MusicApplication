@@ -2,6 +2,8 @@ package com.example.music_backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -45,4 +47,7 @@ public class HistoryLog {
 
     @Column(name = "shared_catalog_id")
     private String sharedCatalogId;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

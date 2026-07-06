@@ -15,6 +15,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -69,24 +70,20 @@ public class CatalogService {
 
     @Transactional
     public void undoLastAction(User user) {
-        List<HistoryLog> userHistory = historyRepository.findByUser(user);
+        HistoryLog lastExecuted = historyRepository.findTopByStatusOrderByCreatedAtDesc("executed");
 
-        HistoryLog lastExecuted = userHistory.stream()
-                .filter(log -> log.getStatus().equals("executed"))
-                .reduce((first, second) -> second)
-                .orElse(null);
+        if (lastExecuted != null && lastExecuted.getUser().getId().equals(user.getId())) {
 
-        if (lastExecuted != null) {
             lastExecuted.setStatus("undone");
             historyRepository.save(lastExecuted);
 
-            if (lastExecuted.getCommandType().equals("ADD")) {
+            if ("ADD".equals(lastExecuted.getCommandType())) {
                 if (lastExecuted.getSharedCatalogId() != null) {
                     sharedRepository.deleteById(lastExecuted.getSharedCatalogId());
                 }
-            }
-            else if (lastExecuted.getCommandType().equals("REMOVE")) {
+            } else if ("REMOVE".equals(lastExecuted.getCommandType())) {
                 SharedCatalog restoredSong = new SharedCatalog();
+
                 restoredSong.setSongId(lastExecuted.getSongId());
                 restoredSong.setPlaylistId(lastExecuted.getPlaylistId());
                 restoredSong.setTitle(lastExecuted.getTitle());
@@ -94,7 +91,11 @@ public class CatalogService {
                 restoredSong.setRating(lastExecuted.getRating());
                 restoredSong.setAddedByUsername(user.getUsername());
 
-                sharedRepository.save(restoredSong);
+                SharedCatalog saved = sharedRepository.save(restoredSong);
+                sharedRepository.flush();
+
+                lastExecuted.setSharedCatalogId(saved.getId());
+                historyRepository.save(lastExecuted);
             }
 
             triggerJsonSync(user);
@@ -114,12 +115,37 @@ public class CatalogService {
         log.setArtist(songToDelete.getArtist());
         log.setPlaylistId(songToDelete.getPlaylistId());
         log.setRating(songToDelete.getRating());
+        log.setCreatedAt(LocalDateTime.now());
         log.setSharedCatalogId(songToDelete.getId());
         log.setStatus("executed");
         historyRepository.save(log);
         sharedRepository.delete(songToDelete);
 
+        List<HistoryLog> executed = historyRepository.findByUserAndStatus(user, "executed");
+        List<HistoryLog> undone = historyRepository.findByUserAndStatus(user, "undone");
+
+        journalService.writeHistoryToJsonFile(user.getUsername(), executed, undone);
+
         triggerJsonSync(user);
+    }
+
+    @Transactional
+    public void mergeFriendCatalog(User currentUser, String friendUsername) {
+        List<SharedCatalog> friendSongs = journalService.readCatalogFromFile(friendUsername);
+
+        for (SharedCatalog song : friendSongs) {
+            if (!sharedRepository.existsBySongId(song.getSongId())) {
+
+                AddSongRequestDto dto = new AddSongRequestDto(
+                        song.getPlaylistId(),
+                        song.getTitle(),
+                        song.getArtist(),
+                        song.getRating()
+                );
+
+                addSong(currentUser, dto);
+            }
+        }
     }
 
 
@@ -159,6 +185,6 @@ public class CatalogService {
         List<HistoryLog> executed = allHistory.stream().filter(l -> l.getStatus().equals("executed")).collect(Collectors.toList());
         List<HistoryLog> undone = allHistory.stream().filter(l -> l.getStatus().equals("undone")).collect(Collectors.toList());
 
-        journalService.writeHistoryToJsonFile(executed, undone);
+        journalService.writeHistoryToJsonFile(user.getUsername(), executed, undone);
     }
 }

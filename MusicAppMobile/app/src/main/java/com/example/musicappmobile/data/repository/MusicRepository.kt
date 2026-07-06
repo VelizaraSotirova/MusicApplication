@@ -40,7 +40,7 @@ class MusicRepository(private val tokenManager: TokenManager) {
     }
 
 
-    suspend fun mergeCatalog(playlistId: RequestBody, file: MultipartBody.Part): Response<MergeResponse> {
+    suspend fun mergeCatalog(playlistId: String, file: MultipartBody.Part): Response<MergeResponse> {
         return apiService.mergeCatalog(getAuthHeader(), playlistId, file)
     }
 }

@@ -8,13 +8,20 @@ import com.example.music_backend.model.User;
 import com.example.music_backend.repository.UserRepository;
 import com.example.music_backend.service.CatalogService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
 import java.io.IOException;
+import java.security.Principal;
 import java.util.List;
 
 import jakarta.validation.Valid;
@@ -71,25 +78,39 @@ public class CatalogController {
         return ResponseEntity.ok("Song removed successfully");
     }
 
-    @PostMapping("/merge")
-    public ResponseEntity<?> mergeCatalog(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam("playlistId") String playlistId,
-            @RequestParam("file") MultipartFile file) throws IOException {
+    @PostMapping("/merge/{playlistId}")
+    public ResponseEntity<MergeResponseDto> mergeFromFriend(
+            @PathVariable String playlistId,
+            @RequestParam("file") MultipartFile file,
+            Principal principal) {
 
-        User user = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found!"));
+        try {
+            User user = userRepository.findByUsername(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("Please upload a valid JSON file!");
+            MergeResponseDto response = catalogService.mergeFromFriendStream(user, playlistId, file.getInputStream());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+
+    @GetMapping("/export-file")
+    public ResponseEntity<Resource> exportCatalogFile(@AuthenticationPrincipal UserDetails userDetails) {
+        String username = userDetails.getUsername();
+        String filePath = System.getProperty("user.home") + "/music_catalogs/" + username + "_songs.json";
+
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return ResponseEntity.notFound().build();
         }
 
-        if (!"application/json".equals(file.getContentType())) {
-            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-                    .body("Only application/json files are allowed!");
-        }
-
-        MergeResponseDto response = catalogService.mergeFromFriendStream(user, playlistId, file.getInputStream());
-        return ResponseEntity.ok(response);
+        Resource resource = new FileSystemResource(file);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getName() + "\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resource);
     }
 }
