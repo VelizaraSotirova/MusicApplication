@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.musicappmobile.data.model.AddSongRequest
+import com.example.musicappmobile.data.model.SharedCatalogResponse
 import com.example.musicappmobile.data.model.SongResponse
 import com.example.musicappmobile.data.repository.MusicRepository
 import kotlinx.coroutines.launch
@@ -20,22 +21,25 @@ class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
+    private val _songsList = MutableLiveData<List<SharedCatalogResponse>>(emptyList())
+    val songsList: LiveData<List<SharedCatalogResponse>> = _songsList
+
     private var userToken: String? = null
 
     fun setAuthToken(token: String) {
-        val cleanToken = token.replace("\"", "")
+        val cleanToken = token.replace("\"", "").replace("Bearer ", "")
         userToken = "Bearer $cleanToken"
     }
 
     fun logout() {
         userToken = null
         _songs.value = emptyList()
+        _songsList.value = emptyList()
         _uiMessage.value = null
     }
 
     fun addSong(playlistId: String, title: String, artist: String, rating: Int) {
-        val token = userToken
-        if (token == null) {
+        val token = userToken ?: run {
             _uiMessage.value = "Error: not authorized!"
             return
         }
@@ -44,14 +48,9 @@ class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
         viewModelScope.launch {
             try {
                 val response = repository.addSong(token, AddSongRequest(playlistId, title, artist, rating))
-                if (response.isSuccessful && response.body() != null) {
-                    val newSong = response.body()!!
-
-                    val currentList = _songs.value.orEmpty().toMutableList()
-                    currentList.add(newSong)
-                    _songs.value = currentList
-
-                    _uiMessage.value = "Song '${newSong.title}' is added successfully!"
+                if (response.isSuccessful) {
+                    _uiMessage.value = "Song '$title' added successfully!"
+                    loadUserSongs()
                 } else {
                     _uiMessage.value = "Error adding song: code ${response.code()}"
                 }
@@ -63,26 +62,59 @@ class MusicViewModel(private val repository: MusicRepository) : ViewModel() {
         }
     }
 
-    fun undoLastAction() {
-        val token = userToken
-        if (token == null) {
-            _uiMessage.value = "Error: Missing token!"
-            return
+    fun loadUserSongs() {
+        val token = userToken ?: return
+
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val response = repository.getUserSongs(token)
+                if (response.isSuccessful && response.body() != null) {
+                    val uniqueSongs = response.body()!!.distinctBy { it.id }
+                    _songsList.value = uniqueSongs
+                } else {
+                    _uiMessage.value = "Error loading songs: code ${response.code()}"
+                }
+            } catch (e: Exception) {
+                _uiMessage.value = "No server connection: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
+    }
+
+    fun deleteSong(songId: String) {
+        val token = userToken ?: return
+
+        _isLoading.value = true
+        viewModelScope.launch {
+            try {
+                val response = repository.deleteSong(token, songId)
+                if (response.isSuccessful) {
+                    _uiMessage.value = "Deleted successfully!"
+                    loadUserSongs()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiMessage.value = "Failed: ${response.code()} - $errorBody"
+                }
+            } catch (e: Exception) {
+                _uiMessage.value = "Error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun undoLastAction() {
+        val token = userToken ?: return
 
         _isLoading.value = true
         viewModelScope.launch {
             try {
                 val response = repository.undoAction(token)
                 if (response.isSuccessful) {
-                    val message = response.body()?.string() ?: "Action undone!"
-                    _uiMessage.value = message
-
-                    val currentList = _songs.value.orEmpty().toMutableList()
-                    if (currentList.isNotEmpty()) {
-                        currentList.removeAt(currentList.size - 1)
-                        _songs.value = currentList
-                    }
+                    _uiMessage.value = "Action undone successfully!"
+                    loadUserSongs()
                 } else {
                     _uiMessage.value = "Undo error: code ${response.code()}"
                 }

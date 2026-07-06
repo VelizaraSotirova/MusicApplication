@@ -3,6 +3,7 @@ package com.example.music_backend.controller;
 import com.example.music_backend.dto.AddSongRequestDto;
 import com.example.music_backend.dto.MergeResponseDto;
 import com.example.music_backend.dto.SongDto;
+import com.example.music_backend.model.SharedCatalog;
 import com.example.music_backend.model.User;
 import com.example.music_backend.repository.UserRepository;
 import com.example.music_backend.service.CatalogService;
@@ -14,6 +15,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.util.List;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -40,6 +43,13 @@ public class CatalogController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/songs/my-songs")
+    public ResponseEntity<List<SharedCatalog>> getMySongs(java.security.Principal principal) {
+        String username = principal.getName();
+
+        List<SharedCatalog> songs = catalogService.getSongsByUsername(username);
+        return ResponseEntity.ok(songs);
+    }
 
     @PostMapping("/undo")
     public ResponseEntity<?> undoAction(
@@ -50,6 +60,15 @@ public class CatalogController {
 
         catalogService.undoLastAction(user);
         return ResponseEntity.ok("Last Action successfully undone (Undo)!");
+    }
+
+    @DeleteMapping("/delete/{songId}")
+    public ResponseEntity<?> deleteSong(@AuthenticationPrincipal UserDetails userDetails, @PathVariable String songId) {
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found!"));
+
+        catalogService.removeSong(user, songId);
+        return ResponseEntity.ok("Song removed successfully");
     }
 
     @PostMapping("/merge")

@@ -21,11 +21,22 @@ interface MusicApiService {
         @Body request: AddSongRequest
     ): Response<SongResponse>
 
+    @GET("api/catalog/songs/my-songs")
+    suspend fun getUserSongs(
+        @Header("Authorization") token: String
+    ): Response<List<SharedCatalogResponse>>
 
     @POST("api/catalog/undo")
     suspend fun undoAction(
         @Header("Authorization") token: String
     ): Response<ResponseBody>
+
+    @DELETE("api/catalog/delete/{songId}")
+    suspend fun deleteSong(
+        @Header("Authorization") token: String,
+        @Path("songId") songId: String
+    ): Response<Void>
+
 
     @Multipart
     @POST("api/catalog/merge")

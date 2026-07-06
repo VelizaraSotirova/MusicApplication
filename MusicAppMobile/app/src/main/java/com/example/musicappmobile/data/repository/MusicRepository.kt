@@ -2,6 +2,7 @@ package com.example.musicappmobile.data.repository
 
 import com.example.musicappmobile.data.model.AddSongRequest
 import com.example.musicappmobile.data.model.MergeResponse
+import com.example.musicappmobile.data.model.SharedCatalogResponse
 import com.example.musicappmobile.data.model.SongResponse
 import com.example.musicappmobile.data.model.UndoRequest
 import com.example.musicappmobile.data.network.RetrofitClient
@@ -26,6 +27,13 @@ class MusicRepository(private val tokenManager: TokenManager) {
         return apiService.addSong(token, request)
     }
 
+    suspend fun getUserSongs(token: String): Response<List<SharedCatalogResponse>> {
+        return apiService.getUserSongs(token)
+    }
+
+    suspend fun deleteSong(token: String, songId: String): Response<Void> {
+        return apiService.deleteSong(token, songId)
+    }
 
     suspend fun undoAction(token: String): Response<ResponseBody> {
         return apiService.undoAction(token)

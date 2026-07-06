@@ -13,7 +13,8 @@ import java.util.UUID;
 public class SharedCatalog {
 
     @Id
-    private String id = UUID.randomUUID().toString();
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
 
     @Column(name = "playlist_id", nullable = false)
     private String playlistId; // Indicator for shared playlist / catalog

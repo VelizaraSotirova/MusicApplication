@@ -42,4 +42,7 @@ public class HistoryLog {
 
     @Column(name = "playlist_id")
     private String playlistId;
+
+    @Column(name = "shared_catalog_id")
+    private String sharedCatalogId;
 }

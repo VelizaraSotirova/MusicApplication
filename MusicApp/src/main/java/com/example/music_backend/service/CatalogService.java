@@ -35,6 +35,15 @@ public class CatalogService {
     public SongDto addSong(User user, AddSongRequestDto request) {
         String songId = UUID.randomUUID().toString();
 
+        SharedCatalog shared = new SharedCatalog();
+        shared.setPlaylistId(request.playlistId());
+        shared.setSongId(songId);
+        shared.setTitle(request.title());
+        shared.setArtist(request.artist());
+        shared.setRating(request.rating());
+        shared.setAddedByUsername(user.getUsername());
+        SharedCatalog saved = sharedRepository.save(shared);
+
         HistoryLog log = new HistoryLog();
         log.setUser(user);
         log.setCommandType("ADD");
@@ -44,22 +53,19 @@ public class CatalogService {
         log.setArtist(request.artist());
         log.setRating(request.rating());
         log.setStatus("executed");
+        log.setSharedCatalogId(saved.getId());
         historyRepository.save(log);
-
-        SharedCatalog shared = new SharedCatalog();
-        shared.setPlaylistId(request.playlistId());
-        shared.setSongId(songId);
-        shared.setTitle(request.title());
-        shared.setArtist(request.artist());
-        shared.setRating(request.rating());
-        shared.setAddedByUsername(user.getUsername());
-        sharedRepository.save(shared);
 
         // trigger a file update through its service
         triggerJsonSync(user);
 
         return new SongDto(songId, request.title(), request.artist(), request.rating());
     }
+
+    public List<SharedCatalog> getSongsByUsername(String username) {
+        return sharedRepository.findByAddedByUsername(username);
+    }
+
 
     @Transactional
     public void undoLastAction(User user) {
@@ -75,11 +81,45 @@ public class CatalogService {
             historyRepository.save(lastExecuted);
 
             if (lastExecuted.getCommandType().equals("ADD")) {
-                sharedRepository.deleteBySongIdAndAddedByUsername(lastExecuted.getSongId(), user.getUsername());
+                if (lastExecuted.getSharedCatalogId() != null) {
+                    sharedRepository.deleteById(lastExecuted.getSharedCatalogId());
+                }
+            }
+            else if (lastExecuted.getCommandType().equals("REMOVE")) {
+                SharedCatalog restoredSong = new SharedCatalog();
+                restoredSong.setSongId(lastExecuted.getSongId());
+                restoredSong.setPlaylistId(lastExecuted.getPlaylistId());
+                restoredSong.setTitle(lastExecuted.getTitle());
+                restoredSong.setArtist(lastExecuted.getArtist());
+                restoredSong.setRating(lastExecuted.getRating());
+                restoredSong.setAddedByUsername(user.getUsername());
+
+                sharedRepository.save(restoredSong);
             }
 
             triggerJsonSync(user);
         }
+    }
+
+    @Transactional
+    public void removeSong(User user, String songId) {
+        SharedCatalog songToDelete = sharedRepository.findBySongIdAndAddedByUsername(songId, user.getUsername())
+                .orElseThrow(() -> new RuntimeException("Song not found"));
+
+        HistoryLog log = new HistoryLog();
+        log.setUser(user);
+        log.setCommandType("REMOVE");
+        log.setSongId(songId);
+        log.setTitle(songToDelete.getTitle());
+        log.setArtist(songToDelete.getArtist());
+        log.setPlaylistId(songToDelete.getPlaylistId());
+        log.setRating(songToDelete.getRating());
+        log.setSharedCatalogId(songToDelete.getId());
+        log.setStatus("executed");
+        historyRepository.save(log);
+        sharedRepository.delete(songToDelete);
+
+        triggerJsonSync(user);
     }
 
 

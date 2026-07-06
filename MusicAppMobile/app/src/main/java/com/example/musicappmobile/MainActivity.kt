@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
                 val currentToken = tokenManager.getToken()
                 if (isLoggedIn && currentToken != null) {
                     musicViewModel.setAuthToken(currentToken)
+                    musicViewModel.loadUserSongs()
                 }
             }
 

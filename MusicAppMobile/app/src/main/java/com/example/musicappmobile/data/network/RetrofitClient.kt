@@ -31,6 +31,14 @@ object RetrofitClient {
         .addInterceptor(logging)
         .build()
 
+    private val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(httpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
     val userApiService: UserApiService by lazy {
         Retrofit.Builder()
             retrofit.create(UserApiService::class.java)
@@ -38,13 +46,5 @@ object RetrofitClient {
 
     val musicApiService: MusicApiService by lazy {
         retrofit.create(MusicApiService::class.java)
-    }
-
-    private val retrofit: Retrofit by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .client(httpClient)
-            .build()
     }
 }
